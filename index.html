@@ -1,376 +1,299 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>멀티 데스크 통합 작업실 대시보드</title>
-    
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    
-    <!-- GoldenLayout v1.59 CSS -->
-    <link type="text/css" rel="stylesheet" href="https://golden-layout.com/files/latest/css/goldenlayout-base.css" />
-    <link type="text/css" rel="stylesheet" href="https://golden-layout.com/files/latest/css/goldenlayout-dark-theme.css" />
-    
-    <!-- GoldenLayout v1.59 JS -->
-    <script type="text/javascript" src="https://golden-layout.com/files/latest/js/goldenlayout.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>멀티 데스크 통합 작업실 대시보드</title>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/golden-layout/1.5.9/css/goldenlayout-base.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/golden-layout/1.5.9/css/goldenlayout-dark-theme.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/golden-layout/1.5.9/goldenlayout.min.js"></script>
+<style>
+body{margin:0;height:100vh;display:flex;flex-direction:column;font-family:sans-serif;background:#1e1e1e;color:#eee;overflow:hidden}
+#toolbar{background:#2d2d2d;padding:6px 15px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #444;flex-shrink:0;z-index:1000;flex-wrap:wrap}
+#toolbar h3{margin:0 4px 0 0;font-size:14px;color:#fff}
+#deskTabsContainer{display:flex;gap:4px;align-items:center}
+.desk-tab{background:#3a3a3a;color:#aaa;border:1px solid #555;padding:4px 10px;border-radius:3px;font-size:12px;cursor:pointer;font-weight:bold}
+.desk-tab:hover{background:#4a4a4a;color:#fff}
+.desk-tab.active{background:#007acc;color:#fff;border-color:#005f99}
+#toolbar button:not(.desk-tab){padding:4px 10px;background:#007acc;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:12px;font-weight:bold}
+#toolbar button:not(.desk-tab):hover{background:#005f99}
+#toolbar button.active,#toolbar button.danger{background:#d9534f}
+.toolbar-divider{width:1px;height:16px;background:#555;margin:0 4px}
+#toolbar .hint{font-size:11px;color:#aaa;margin-left:auto}
+#layoutContainer{flex:1;width:100%;position:relative;min-height:0}
+.desk-view{position:absolute;inset:0;display:none}
+.desk-view.show{display:block}
 
-    <style>
-        body { margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; font-family: sans-serif; background: #1e1e1e; color: #eee; overflow: hidden; }
-        
-        /* 슬림해진 상단 툴바 */
-        #toolbar { background: #2d2d2d; padding: 6px 15px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid #444; flex-shrink: 0; z-index: 1000; flex-wrap: wrap; }
-        #toolbar h3 { margin: 0; font-size: 14px; color: #fff; margin-right: 4px; }
-        
-        /* 데스크 버튼 영역 컨테이너 */
-        #deskTabsContainer { display: flex; gap: 4px; align-items: center; }
-        .desk-tab { background: #3a3a3a; color: #aaa; border: 1px solid #555; padding: 4px 10px; border-radius: 3px; font-size: 12px; cursor: pointer; font-weight: bold; }
-        .desk-tab:hover { background: #4a4a4a; color: #fff; }
-        .desk-tab.active { background: #007acc; color: #fff; border-color: #005f99; }
+.app-panel{width:100%;height:100%;display:flex;flex-direction:column;background:#252526;overflow:hidden;position:relative}
+.app-header{background:#333;padding:4px 8px;display:flex;gap:6px;align-items:center;border-bottom:1px solid #444;flex-shrink:0}
+.app-header input{flex:1;background:#1e1e1e;color:#fff;border:1px solid #555;padding:3px 6px;border-radius:3px;font-size:11px}
+.app-header button{background:#007acc;color:#fff;border:none;padding:3px 8px;border-radius:3px;cursor:pointer;font-size:11px}
+.app-body{flex:1;width:100%;height:100%;border:none;background:#fff}
 
-        #toolbar button { padding: 4px 10px; background: #007acc; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; font-weight: bold; }
-        #toolbar button:hover { background: #005f99; }
-        #toolbar button.active { background: #d9534f; }
-        
-        .toolbar-divider { width: 1px; height: 16px; background: #555; margin: 0 4px; }
-        #toolbar .hint { font-size: 11px; color: #aaa; margin-left: auto; }
+/* 고정 모드에서도 보이는 작은 버튼 (새로고침 / 새 창) */
+.mini-actions{position:absolute;top:4px;right:18px;display:flex;gap:3px;opacity:.3;transition:opacity .15s;z-index:5}
+.app-panel:hover .mini-actions,.mini-actions:hover{opacity:1}
+.mini-actions button{background:rgba(30,30,30,.85);color:#fff;border:1px solid #666;border-radius:3px;font-size:12px;line-height:1;padding:3px 6px;cursor:pointer}
+.mini-actions button:hover{background:#007acc}
 
-        #layoutContainer { flex: 1; width: 100%; height: 100%; position: relative; }
+body.locked .app-header{display:none}
+body.locked .lm_header{display:none!important}
+body.locked .lm_splitter{pointer-events:none!important}
+body.dragging iframe{pointer-events:none}   /* 분할선 드래그 중 iframe이 마우스를 가로채지 않게 */
+.edit-only{display:none}
+body:not(.locked) .edit-only{display:inline-block}
 
-        /* 개별 앱 패널 스타일 */
-        .app-panel { width: 100%; height: 100%; display: flex; flex-direction: column; background: #252526; overflow: hidden; }
-        .app-header { background: #333; padding: 4px 8px; display: flex; gap: 6px; align-items: center; border-bottom: 1px solid #444; flex-shrink: 0; }
-        .app-header input { flex: 1; background: #1e1e1e; color: #fff; border: 1px solid #555; padding: 3px 6px; border-radius: 3px; font-size: 11px; }
-        .app-header button { background: #007acc; color: #fff; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; }
-        .app-body { flex: 1; width: 100%; height: 100%; border: none; background: #fff; }
-
-        /* 고정 모드일 때 숨기기 및 분할선(스플리터) 마우스 조작 차단 */
-        body.locked .app-header { display: none; }
-        body.locked .lm_header { display: none !important; }
-        body.locked .lm_splitter { pointer-events: none !important; }
-        
-        /* 수정모드 전용 컨트롤 */
-        .edit-only { display: none; }
-        body:not(.locked) .edit-only { display: inline-block; }
-    </style>
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 16px;border-radius:4px;font-size:12px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:9999;border:1px solid #555}
+#toast.on{opacity:1}
+</style>
 </head>
-<body>
+<body class="locked">
 
-    <div id="toolbar">
-        <h3>작업실</h3>
-        
-        <!-- 데스크 버튼들이 나열될 영역 -->
-        <div id="deskTabsContainer"></div>
-        <button id="addDeskBtn" onclick="addNewDesk()" title="새 데스크 추가 (최대 5개)">+</button>
-        
-        <div class="toolbar-divider"></div>
+<div id="toolbar">
+    <h3>작업실</h3>
+    <div id="deskTabsContainer"></div>
+    <button id="addDeskBtn" onclick="addNewDesk()" title="새 데스크 추가 (최대 5개)">+</button>
+    <div class="toolbar-divider"></div>
+    <button class="edit-only" onclick="addNewPane()">+ 창 추가</button>
+    <button id="modeBtn" onclick="toggleEditMode()">수정모드 진입</button>
+    <button onclick="saveMyLayout(true)">수동 저장</button>
+    <button onclick="reloadAllPanes()" title="현재 데스크의 모든 창 새로고침">⟳ 전체 새로고침</button>
+    <button class="edit-only danger" onclick="resetCurrentDesk()">이 데스크 초기화</button>
+    <span class="hint" id="modeHint"></span>
+</div>
 
-        <button id="addPaneBtn" class="edit-only" onclick="addNewPane()">+ 창 추가</button>
-        <button id="modeBtn" onclick="toggleEditMode()">수정모드 진입</button>
-        <button onclick="saveMyLayout()">수동 저장</button>
-        
-        <!-- 초기화 버튼은 수정모드일 때만 노출 -->
-        <button class="edit-only" onclick="resetCurrentDesk()" style="background:#d9534f;">이 데스크 초기화</button>
-        
-        <span class="hint" id="modeHint">고정 모드 (창 및 주소 수정 불가)</span>
-    </div>
+<div id="layoutContainer"></div>
+<div id="toast"></div>
 
-    <div id="layoutContainer"></div>
+<script>
+const STORAGE_KEY = 'multi_desk_dashboard_permanent_key';
+let isLocked = true;
+let appData = { currentDeskId: 'desk_1', desks: { desk_1: { name: '데스크1', config: getDefaultConfig() } } };
+const instances = {};   // deskId -> { layout, $el }  (한 번 만들면 전환해도 유지 → iframe 재로딩 없음)
 
-    <script>
-        let myLayout;
-        let isLocked = true;
-        let paneCounter = 1;
-        
-        const STORAGE_KEY = 'multi_desk_dashboard_permanent_key';
+function getDefaultConfig() {
+    return {
+        settings: { hasHeaders: true, reorderEnabled: true, selectionEnabled: false, popoutWholeStack: false,
+            blockedPopoutsThrowError: true, closePopoutsOnUnload: true, showPopoutIcon: false,
+            showMaximiseIcon: true, showCloseIcon: true },
+        content: [{ type: 'row', content: [{ type: 'stack', content: [
+            { type: 'component', componentName: 'AppViewer', title: '작업창 1', componentState: { url: '' } }
+        ]}]}]
+    };
+}
 
-        let appData = {
-            currentDeskId: 'desk_1',
-            desks: {
-                'desk_1': {
-                    name: '데스크1',
-                    config: getDefaultConfig()
-                }
-            }
-        };
+function toast(msg) {
+    const $t = $('#toast').text(msg).addClass('on');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => $t.removeClass('on'), 1800);
+}
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
-        function getDefaultConfig() {
-            return {
-                settings: {
-                    hasHeaders: true,
-                    reorderEnabled: true,
-                    selectionEnabled: false,
-                    popoutWholeStack: false,
-                    blockedPopoutsThrowError: true,
-                    closePopoutsOnUnload: true,
-                    showPopoutIcon: false,
-                    showMaximiseIcon: true,
-                    showCloseIcon: true
-                },
-                content: [{
-                    type: 'row',
-                    content: [{
-                        type: 'stack',
-                        content: [{
-                            type: 'component',
-                            componentName: 'AppViewer',
-                            title: '작업창 1',
-                            componentState: { url: '' }
-                        }]
-                    }]
-                }]
-            };
+/* ---------- 저장 / 불러오기 ---------- */
+function loadAppData() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+        if (parsed && parsed.desks && parsed.currentDeskId) { appData = parsed; return; }
+    } catch (e) { console.error('데이터 로드 실패:', e); }
+    for (const k of ['multi_desk_dashboard_data_v1', 'pro_dashboard_layout_unified', 'pro_dashboard_layout_v6']) {
+        try {
+            const old = JSON.parse(localStorage.getItem(k) || 'null');
+            if (!old) continue;
+            if (old.desks) { appData = old; persist(); return; }
+            if (old.content) { appData.desks.desk_1.config = old; persist(); return; }
+        } catch (e) {}
+    }
+}
+function persist() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); } catch (e) { console.error(e); } }
+
+function snapshotAll() {
+    for (const id in instances) {
+        const l = instances[id].layout;
+        if (l && l.isInitialised && appData.desks[id]) appData.desks[id].config = l.toConfig();
+    }
+}
+const autoSave = debounce(() => { snapshotAll(); persist(); }, 500);
+window.addEventListener('beforeunload', () => { snapshotAll(); persist(); });
+
+function saveMyLayout(notify) {
+    snapshotAll(); persist();
+    if (notify) toast(`"${appData.desks[appData.currentDeskId].name}" 저장 완료`);
+}
+
+/* ---------- 데스크 탭 ---------- */
+function updateDeskTabsUI() {
+    const $c = $('#deskTabsContainer').empty();
+    const ids = Object.keys(appData.desks);
+    ids.forEach(id => {
+        const desk = appData.desks[id];
+        const $tab = $('<button class="desk-tab"></button>')
+            .text(desk.name)
+            .attr('title', '클릭: 전환 / 더블클릭: 이름 변경')
+            .toggleClass('active', id === appData.currentDeskId)
+            .on('click', () => switchDesk(id))
+            .on('dblclick', e => {
+                e.stopPropagation();
+                const n = prompt('변경할 데스크 이름을 입력하세요:', desk.name);
+                if (n && n.trim()) { desk.name = n.trim(); persist(); updateDeskTabsUI(); }
+            });
+        $c.append($tab);
+    });
+    $('#addDeskBtn').toggle(ids.length < 5);
+}
+
+function switchDesk(id) {
+    if (id === appData.currentDeskId && instances[id]) return;
+    appData.currentDeskId = id;
+    persist();
+    updateDeskTabsUI();
+    showCurrentDesk();
+}
+
+function showCurrentDesk() {
+    let id = appData.currentDeskId;
+    if (!appData.desks[id]) id = appData.currentDeskId = Object.keys(appData.desks)[0];
+    $('.desk-view').removeClass('show');
+    if (!instances[id]) createDesk(id);       // 처음 방문할 때만 생성
+    instances[id].$el.addClass('show');
+    instances[id].layout.updateSize();        // 숨겨져 있던 크기 재계산
+}
+
+/* ---------- 데스크(GoldenLayout) 생성 ---------- */
+function createDesk(id) {
+    const $el = $('<div class="desk-view"></div>').appendTo('#layoutContainer').addClass('show');
+    const layout = new GoldenLayout(appData.desks[id].config, $el);
+
+    layout.registerComponent('AppViewer', function (container, state) {
+        const $root = container.getElement();
+        $root.html(`
+            <div class="app-panel">
+                <div class="mini-actions">
+                    <button class="reload-btn" title="새로고침 (캐시 우회)">⟳</button>
+                    <button class="popout-btn" title="새 창으로 열기 (iframe 차단 사이트용)">↗</button>
+                </div>
+                <div class="app-header">
+                    <input type="text" class="url-input" placeholder="https:// 주소 입력">
+                    <button class="load-btn">적용</button>
+                </div>
+                <iframe class="app-body" title="app"
+                    allow="clipboard-read; clipboard-write; camera; microphone; geolocation; fullscreen; storage-access"></iframe>
+            </div>`);
+        const $input = $root.find('.url-input').val(state.url || '');
+        const $iframe = $root.find('.app-body');
+        if (state.url) $iframe.attr('src', state.url);
+
+        function normalize(u) {
+            u = (u || '').trim();
+            if (u && !/^https?:\/\//i.test(u)) u = 'https://' + u;
+            return u;
         }
-
-        $(function() {
-            loadAppData();
-            updateDeskTabsUI();
-            renderCurrentDesk();
+        function applyUrl() {
+            const url = normalize($input.val());
+            $input.val(url);
+            $iframe.attr('src', url || 'about:blank');
+            container.setState({ url });
+            autoSave();
+        }
+        function reload() {
+            const url = normalize($input.val());
+            if (!url) return;
+            // 같은 출처면 강제 새로고침, 아니면 주소에 시간값을 붙여 캐시 우회
+            try { $iframe[0].contentWindow.location.reload(); return; } catch (e) {}
+            const u = new URL(url); u.searchParams.set('_t', Date.now());
+            $iframe.attr('src', u.toString());
+        }
+        $root.find('.reload-btn').on('click', reload);
+        $root.find('.popout-btn').on('click', () => {
+            const url = normalize($input.val());
+            if (url) window.open(url, '_blank', 'popup,width=1100,height=800');
         });
+        $root.find('.load-btn').on('click', applyUrl);
+        $input.on('keydown', e => { if (e.key === 'Enter') applyUrl(); });
+        $input.on('mousedown click keydown keypress', e => e.stopPropagation());
+        $root.data('reload', reload);
+    });
 
-        function loadAppData() {
-            let saved = localStorage.getItem(STORAGE_KEY);
-            if(saved) {
-                try {
-                    let parsed = JSON.parse(saved);
-                    if(parsed && parsed.desks && parsed.currentDeskId) {
-                        appData = parsed;
-                        return;
-                    }
-                } catch(e) {
-                    console.error("데이터 로드 실패:", e);
-                }
-            }
+    layout.on('stateChanged', autoSave);
+    layout.init();
+    instances[id] = { layout, $el };
+}
 
-            // 구버전 키 데이터 마이그레이션 시도
-            let oldKeys = ['multi_desk_dashboard_data_v1', 'pro_dashboard_layout_unified', 'pro_dashboard_layout_v6'];
-            for(let oldKey of oldKeys) {
-                let oldData = localStorage.getItem(oldKey);
-                if(oldData) {
-                    try {
-                        let parsedOld = JSON.parse(oldData);
-                        if(parsedOld.desks) {
-                            appData = parsedOld;
-                            saveAppDataToStorage();
-                            return;
-                        } else if(parsedOld.content) {
-                            appData.desks['desk_1'].config = parsedOld;
-                            saveAppDataToStorage();
-                            return;
-                        }
-                    } catch(e) {}
-                }
-            }
-        }
+/* ---------- 데스크 추가 / 초기화 / 창 추가 ---------- */
+function addNewDesk() {
+    const ids = Object.keys(appData.desks);
+    if (ids.length >= 5) return alert('데스크는 최대 5개까지만 생성할 수 있습니다.');
+    const name = prompt('새 데스크 이름을 입력하세요:', `데스크${ids.length + 1}`);
+    if (!name || !name.trim()) return;
+    const id = 'desk_' + Date.now();
+    snapshotAll();
+    appData.desks[id] = { name: name.trim(), config: getDefaultConfig() };
+    appData.currentDeskId = id;
+    persist(); updateDeskTabsUI(); showCurrentDesk();
+}
 
-        function saveAppDataToStorage() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-        }
+function resetCurrentDesk() {
+    const id = appData.currentDeskId, name = appData.desks[id].name;
+    if (!confirm(`"${name}" 데스크를 초기 상태로 되돌리시겠습니까?`)) return;
+    instances[id].layout.destroy();
+    instances[id].$el.remove();
+    delete instances[id];
+    appData.desks[id].config = getDefaultConfig();
+    persist(); showCurrentDesk(); applyLockState(isLocked);
+    toast(`"${name}" 초기화됨`);
+}
 
-        function updateDeskTabsUI() {
-            let $container =$('#deskTabsContainer');
-            $container.empty();
+function findFirstStack(item) {
+    if (item.isStack) return item;
+    for (const c of (item.contentItems || [])) { const f = findFirstStack(c); if (f) return f; }
+    return null;
+}
+function addNewPane() {
+    const layout = instances[appData.currentDeskId].layout;
+    const used = layout.root.getItemsByType('component').map(c => c.config.title);
+    let n = used.length + 1;
+    while (used.includes(`작업창 ${n}`)) n++;
+    const cfg = { type: 'component', componentName: 'AppViewer', title: `작업창 ${n}`, componentState: { url: '' } };
+    const stack = findFirstStack(layout.root);
+    (stack || layout.root).addChild(cfg);
+}
 
-            let deskIds = Object.keys(appData.desks);
+function reloadAllPanes() {
+    const layout = instances[appData.currentDeskId].layout;
+    layout.root.getItemsByType('component').forEach(c => {
+        const fn = c.container.getElement().data('reload');
+        if (fn) fn();
+    });
+    toast('새로고침 요청됨');
+}
 
-            deskIds.forEach(id => {
-                let desk = appData.desks[id];
-                let activeClass = (id === appData.currentDeskId) ? 'active' : '';
-                
-                let $tab =$(`<button class="desk-tab ${activeClass}" title="클릭하여 전환 / 더블클릭하여 이름 변경">${desk.name}</button>`);
-                
-                // 단일 클릭: 데스크 전환
-                $tab.on('click', function() {
-                    if(id !== appData.currentDeskId) {
-                        saveCurrentLayoutState();
-                        appData.currentDeskId = id;
-                        saveAppDataToStorage();
-                        updateDeskTabsUI();
-                        renderCurrentDesk();
-                    }
-                });
+/* ---------- 모드 전환 ---------- */
+function toggleEditMode() { applyLockState(!isLocked); }
+function applyLockState(lock) {
+    isLocked = lock;
+    $('body').toggleClass('locked', lock);
+    $('#modeBtn').text(lock ? '수정모드 진입' : '고정하기 (완료)').toggleClass('active', !lock);
+    $('#modeHint').text(lock ? '고정 모드 (창 및 주소 수정 불가)' : '수정모드 활성 (창 추가, 주소 변경, 레이아웃 조절 가능)');
+    if (lock) saveMyLayout(false);   // 조용히 저장 (알림 없음)
+    const inst = instances[appData.currentDeskId];
+    if (inst) inst.layout.updateSize();
+}
 
-                // 더블 클릭: 데스크 이름 변경
-                $tab.on('dblclick', function(e) {
-                    e.stopPropagation();
-                    let newName = prompt("변경할 데스크 이름을 입력하세요:", desk.name);
-                    if(newName && newName.trim() !== "") {
-                        desk.name = newName.trim();
-                        saveAppDataToStorage();
-                        updateDeskTabsUI();
-                    }
-                });
+/* ---------- 초기화 ---------- */
+$(function () {
+    loadAppData();
+    updateDeskTabsUI();
+    showCurrentDesk();
+    applyLockState(true);
 
-                $container.append($tab);
-            });
-
-            // 최대 5개 도달 시 + 버튼 숨기기
-            if(deskIds.length >= 5) {
-                $('#addDeskBtn').hide();
-            } else {
-                $('#addDeskBtn').show();
-            }
-        }
-
-        function renderCurrentDesk() {
-            if(myLayout) {
-                myLayout.destroy();
-                $('#layoutContainer').empty();
-            }
-
-            let desk = appData.desks[appData.currentDeskId];
-            if(!desk) {
-                appData.currentDeskId = Object.keys(appData.desks)[0];
-                desk = appData.desks[appData.currentDeskId];
-            }
-
-            myLayout = new GoldenLayout(desk.config, $('#layoutContainer'));
-
-            myLayout.registerComponent('AppViewer', function(container, state) {
-                let $el = container.getElement();
-                let currentUrl = state.url || '';
-                
-                $el.html(`
-    <div class="app-panel">
-        <div class="app-header">
-            <input type="text" class="url-input" value="${currentUrl}" placeholder="https:// 주소 입력">
-            <button class="load-btn">적용</button>
-        </div>
-        <iframe class="app-body" src="${currentUrl}" allow="clipboard-read; clipboard-write; camera; microphone; geolocation; storage-access"></iframe>
-    </div>
-`);
-
-                let $input =$el.find('.url-input');
-                let $iframe =$el.find('.app-body');
-                let $btn =$el.find('.load-btn');
-
-                function applyUrl() {
-                    let url = $input.val().trim();
-                    if(url && !url.startsWith('http://') && !url.startsWith('https://')) {
-                        url = 'https://' + url;
-                        $input.val(url);
-                    }
-                    $iframe.attr('src', url);
-                    container.setState({ url: url });
-                }
-
-                $btn.on('click', applyUrl);$input.on('keypress', function(e) {
-                    if(e.which === 13) applyUrl();
-                });
-
-                // 입력창 이벤트가 GoldenLayout으로 새어나가지 않도록 차단하는 코드 추가
-$input.on('mousedown click keydown keypress', function(e) {
-    e.stopPropagation();
+    $(window).on('resize.gl', () => {
+        const inst = instances[appData.currentDeskId];
+        if (inst) inst.layout.updateSize();
+    });
+    // 분할선 드래그 중 iframe이 마우스 이벤트를 먹지 않도록
+    $(document).on('mousedown', '.lm_splitter', () => $('body').addClass('dragging'));
+    $(document).on('mouseup', () => $('body').removeClass('dragging'));
 });
-            });
-
-            myLayout.init();
-
-            $(window).resize(function() {
-                myLayout.updateSize();
-            });
-
-            applyLockState(isLocked);
-        }
-
-        function saveCurrentLayoutState() {
-            if(myLayout) {
-                let layoutState = myLayout.toConfig();
-                appData.desks[appData.currentDeskId].config = layoutState;
-            }
-        }
-
-        function addNewDesk() {
-            let deskIds = Object.keys(appData.desks);
-            if(deskIds.length >= 5) {
-                alert('데스크는 최대 5개까지만 생성할 수 있습니다.');
-                return;
-            }
-
-            let newId = 'desk_' + Date.now();
-            let count = deskIds.length + 1;
-            let newName = prompt("새 데스크 이름을 입력하세요:", `데스크${count}`);
-            if(!newName) return;
-
-            saveCurrentLayoutState();
-            
-            appData.desks[newId] = {
-                name: newName.trim(),
-                config: getDefaultConfig()
-            };
-            appData.currentDeskId = newId;
-
-            saveAppDataToStorage();
-            updateDeskTabsUI();
-            renderCurrentDesk();
-        }
-
-        function addNewPane() {
-            paneCounter++;
-            const newItemConfig = {
-                type: 'component',
-                componentName: 'AppViewer',
-                title: `작업창 ${paneCounter}`,
-                componentState: { url: '' }
-            };
-
-            let targetStack = findFirstStack(myLayout.root);
-            if (targetStack) {
-                targetStack.addChild(newItemConfig);
-            } else {
-                myLayout.root.addChild(newItemConfig);
-            }
-        }
-
-        function findFirstStack(item) {
-            if (item.isStack) return item;
-            if (item.contentItems) {
-                for (let i = 0; i < item.contentItems.length; i++) {
-                    let found = findFirstStack(item.contentItems[i]);
-                    if (found) return found;
-                }
-            }
-            return null;
-        }
-
-        function toggleEditMode() {
-            applyLockState(!isLocked);
-        }
-
-        function applyLockState(lock) {
-            isLocked = lock;
-            let $btn =$('#modeBtn');
-            let $hint =$('#modeHint');
-
-            if(isLocked) {
-                $btn.text('수정모드 진입').removeClass('active');
-                $hint.text('고정 모드 (창 및 주소 수정 불가)');
-                $('body').addClass('locked');
-                saveMyLayout(); 
-            } else {
-                $btn.text('고정하기 (완료)').addClass('active');
-                $hint.text('수정모드 활성 (창 추가, 주소 변경, 레이아웃 조절 가능)');
-                $('body').removeClass('locked');
-            }
-            myLayout.updateSize();
-        }
-
-        function saveMyLayout() {
-            if(myLayout) {
-                saveCurrentLayoutState();
-                saveAppDataToStorage();
-                alert(`"${appData.desks[appData.currentDeskId].name}" 데스크의 레이아웃과 주소가 안전하게 저장되었습니다!`);
-            }
-        }
-
-        function resetCurrentDesk() {
-            let deskName = appData.desks[appData.currentDeskId].name;
-            if(confirm(`"${deskName}" 데스크를 초기 상태로 되돌리시겠습니까?`)) {
-                appData.desks[appData.currentDeskId].config = getDefaultConfig();
-                saveAppDataToStorage();
-                renderCurrentDesk();
-                alert(`"${deskName}" 데스크가 초기화되었습니다.`);
-            }
-        }
-    </script>
+</script>
 </body>
 </html>
