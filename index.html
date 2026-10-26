@@ -29,13 +29,13 @@ body{margin:0;height:100vh;display:flex;flex-direction:column;font-family:sans-s
 .app-header{background:#333;padding:4px 8px;display:flex;gap:6px;align-items:center;border-bottom:1px solid #444;flex-shrink:0}
 .app-header input{flex:1;background:#1e1e1e;color:#fff;border:1px solid #555;padding:3px 6px;border-radius:3px;font-size:11px}
 .app-header button{background:#007acc;color:#fff;border:none;padding:3px 8px;border-radius:3px;cursor:pointer;font-size:11px}
-.app-body{flex:1;width:100%;height:100%;border:none;background:#fff}
+.app-main{flex:1;min-height:0;display:flex}
+.app-body{flex:1;min-width:0;height:100%;border:none;background:#fff}
 
-/* 고정 모드에서도 보이는 작은 버튼 (새로고침 / 새 창) */
-.mini-actions{position:absolute;top:4px;right:18px;display:flex;gap:3px;opacity:.3;transition:opacity .15s;z-index:5}
-.app-panel:hover .mini-actions,.mini-actions:hover{opacity:1}
-.mini-actions button{background:rgba(30,30,30,.85);color:#fff;border:1px solid #666;border-radius:3px;font-size:12px;line-height:1;padding:3px 6px;cursor:pointer}
-.mini-actions button:hover{background:#007acc}
+/* iframe 오른쪽에 붙은 얇은 버튼 띠 (앱 내용과 겹치지 않음) */
+.side-actions{width:24px;flex-shrink:0;background:#2a2a2a;border-left:1px solid #444;display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:10px}
+.side-actions button{width:20px;height:20px;padding:0;background:#3a3a3a;color:#ccc;border:1px solid #555;border-radius:3px;font-size:12px;line-height:1;cursor:pointer}
+.side-actions button:hover{background:#007acc;color:#fff;border-color:#005f99}
 
 body.locked .app-header{display:none}
 body.locked .lm_header{display:none!important}
@@ -168,16 +168,18 @@ function createDesk(id) {
         const $root = container.getElement();
         $root.html(`
             <div class="app-panel">
-                <div class="mini-actions">
-                    <button class="reload-btn" title="새로고침 (캐시 우회)">⟳</button>
-                    <button class="popout-btn" title="새 창으로 열기 (iframe 차단 사이트용)">↗</button>
-                </div>
                 <div class="app-header">
                     <input type="text" class="url-input" placeholder="https:// 주소 입력">
                     <button class="load-btn">적용</button>
                 </div>
-                <iframe class="app-body" title="app"
-                    allow="clipboard-read; clipboard-write; camera; microphone; geolocation; fullscreen; storage-access"></iframe>
+                <div class="app-main">
+                    <iframe class="app-body" title="app"
+                        allow="clipboard-read; clipboard-write; camera; microphone; geolocation; fullscreen; storage-access"></iframe>
+                    <div class="side-actions">
+                        <button class="reload-btn" title="새로고침 (캐시 우회)">⟳</button>
+                        <button class="popout-btn" title="새 창으로 열기 (iframe 차단 사이트용)">↗</button>
+                    </div>
+                </div>
             </div>`);
         const $input = $root.find('.url-input').val(state.url || '');
         const $iframe = $root.find('.app-body');
