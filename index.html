@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>멀티 데스크 통합 작업실 대시보드</title>
+<script src="https://jjojjolonglong-sudo.github.io/mnmn/fonts.v1.js" data-app="ogog"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/golden-layout/1.5.9/css/goldenlayout-base.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/golden-layout/1.5.9/css/goldenlayout-dark-theme.css">
@@ -32,11 +33,6 @@ body{margin:0;height:100vh;display:flex;flex-direction:column;font-family:sans-s
 .app-main{flex:1;min-height:0;display:flex}
 .app-body{flex:1;min-width:0;height:100%;border:none;background:#fff}
 
-/* iframe 오른쪽에 붙은 얇은 버튼 띠 (앱 내용과 겹치지 않음) */
-.side-actions{width:24px;flex-shrink:0;background:#2a2a2a;border-left:1px solid #444;display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:10px}
-.side-actions button{width:20px;height:20px;padding:0;background:#3a3a3a;color:#ccc;border:1px solid #555;border-radius:3px;font-size:12px;line-height:1;cursor:pointer}
-.side-actions button:hover{background:#007acc;color:#fff;border-color:#005f99}
-
 body.locked .app-header{display:none}
 body.locked .lm_header{display:none!important}
 body.locked .lm_splitter{pointer-events:none!important}
@@ -57,7 +53,6 @@ body:not(.locked) .edit-only{display:inline-block}
     <div class="toolbar-divider"></div>
     <button class="edit-only" onclick="addNewPane()">+ 창 추가</button>
     <button id="modeBtn" onclick="toggleEditMode()">수정모드 진입</button>
-    <button onclick="saveMyLayout(true)">수동 저장</button>
     <button onclick="reloadAllPanes()" title="현재 데스크의 모든 창 새로고침">⟳ 전체 새로고침</button>
     <button class="edit-only danger" onclick="resetCurrentDesk()">이 데스크 초기화</button>
     <span class="hint" id="modeHint"></span>
@@ -116,10 +111,7 @@ function snapshotAll() {
 const autoSave = debounce(() => { snapshotAll(); persist(); }, 500);
 window.addEventListener('beforeunload', () => { snapshotAll(); persist(); });
 
-function saveMyLayout(notify) {
-    snapshotAll(); persist();
-    if (notify) toast(`"${appData.desks[appData.currentDeskId].name}" 저장 완료`);
-}
+function saveMyLayout() { snapshotAll(); persist(); }
 
 /* ---------- 데스크 탭 ---------- */
 function updateDeskTabsUI() {
@@ -175,10 +167,6 @@ function createDesk(id) {
                 <div class="app-main">
                     <iframe class="app-body" title="app"
                         allow="clipboard-read; clipboard-write; camera; microphone; geolocation; fullscreen; storage-access"></iframe>
-                    <div class="side-actions">
-                        <button class="reload-btn" title="새로고침 (캐시 우회)">⟳</button>
-                        <button class="popout-btn" title="새 창으로 열기 (iframe 차단 사이트용)">↗</button>
-                    </div>
                 </div>
             </div>`);
         const $input = $root.find('.url-input').val(state.url || '');
@@ -205,11 +193,6 @@ function createDesk(id) {
             const u = new URL(url); u.searchParams.set('_t', Date.now());
             $iframe.attr('src', u.toString());
         }
-        $root.find('.reload-btn').on('click', reload);
-        $root.find('.popout-btn').on('click', () => {
-            const url = normalize($input.val());
-            if (url) window.open(url, '_blank', 'popup,width=1100,height=800');
-        });
         $root.find('.load-btn').on('click', applyUrl);
         $input.on('keydown', e => { if (e.key === 'Enter') applyUrl(); });
         $input.on('mousedown click keydown keypress', e => e.stopPropagation());
@@ -276,7 +259,7 @@ function applyLockState(lock) {
     $('body').toggleClass('locked', lock);
     $('#modeBtn').text(lock ? '수정모드 진입' : '고정하기 (완료)').toggleClass('active', !lock);
     $('#modeHint').text(lock ? '고정 모드 (창 및 주소 수정 불가)' : '수정모드 활성 (창 추가, 주소 변경, 레이아웃 조절 가능)');
-    if (lock) saveMyLayout(false);   // 조용히 저장 (알림 없음)
+    if (lock) saveMyLayout();   // 고정하기를 누르면 저장 (창을 옮기거나 주소를 바꿀 때도 0.5초 뒤 자동 저장)
     const inst = instances[appData.currentDeskId];
     if (inst) inst.layout.updateSize();
 }
